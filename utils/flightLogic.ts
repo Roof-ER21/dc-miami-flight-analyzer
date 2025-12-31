@@ -61,25 +61,69 @@ export const getStatusColor = (status: ValueStatus | string): string => {
 };
 
 // Generates a deep link to Google Flights for the specific route and date
-// Optional: Include airline, flight number, and cabin for a more specific search
-export const getGoogleFlightsUrl = (origin: string, dest: string, date: string, airline?: string, flightNumber?: string, cabin?: string): string => {
-  let query = `Flights to ${dest} from ${origin} on ${date}`;
-  if (airline && flightNumber) {
-    // Adding airline and flight number makes the search result much more specific
-    query = `${airline} flight ${flightNumber} from ${origin} to ${dest} on ${date}`;
+export const getGoogleFlightsUrl = (origin: string, dest: string, date: string, _airline?: string, _flightNumber?: string, cabin?: string): string => {
+  // Build a specific search query that Google Flights will parse
+  const cabinText = cabin === 'First' ? ' first class' : '';
+  const searchQuery = `flights from ${origin} to ${dest} on ${date}${cabinText} one way`;
+
+  const params = new URLSearchParams({
+    q: searchQuery,
+    hl: 'en',
+    gl: 'us',
+    curr: 'USD',
+  });
+
+  return `https://www.google.com/travel/flights?${params.toString()}`;
+};
+
+// Generate Kayak URL - cleaner deep linking with prefilled dates
+export const getKayakUrl = (origin: string, dest: string, date: string, cabin?: string): string => {
+  // Kayak format: /flights/ORIGIN-DEST/DATE?sort=bestflight_a&fs=cabin=X
+  const cabinCode = cabin === 'First' ? 'f' : 'e'; // e=economy, p=premium, b=business, f=first
+  return `https://www.kayak.com/flights/${origin}-${dest}/${date}?sort=bestflight_a&fs=cabin=${cabinCode}`;
+};
+
+// Generate Skyscanner URL - excellent deep linking with exact date
+export const getSkyscannerUrl = (origin: string, dest: string, date: string, cabin?: string): string => {
+  // Skyscanner format: /transport/flights/ORIGIN/DEST/YYMMDD/
+  const formattedDate = date.replace(/-/g, '').slice(2); // YYMMDD format
+  const cabinClass = cabin === 'First' ? 'first' : 'economy';
+  return `https://www.skyscanner.com/transport/flights/${origin.toLowerCase()}/${dest.toLowerCase()}/${formattedDate}/?adultsv2=1&cabinclass=${cabinClass}&rtn=0`;
+};
+
+// Generate direct booking link for specific airlines with prefilled search
+export const getAirlineDirectUrl = (origin: string, dest: string, date: string, airline: string, cabin?: string): string => {
+  const airlineLower = airline.toLowerCase();
+
+  if (airlineLower.includes('american')) {
+    return `https://www.aa.com/booking/find-flights?tripType=oneWay&originAirport=${origin}&destinationAirport=${dest}&departureDate=${date}&cabin=${cabin === 'First' ? 'FIRST' : 'ECONOMY'}&passengerCount=1`;
   }
-  // Append cabin class to the query if it's not Economy (Google defaults to Economy)
-  if (cabin && cabin === 'First') {
-    query += ` in First Class`;
+  if (airlineLower.includes('delta')) {
+    return `https://www.delta.com/flight-search/book-a-flight?tripType=ONE_WAY&originCity=${origin}&destinationCity=${dest}&departureDate=${date}&paxCount=1&cabinPreference=${cabin === 'First' ? 'FIRST' : 'COACH'}`;
   }
-  return `https://www.google.com/travel/flights?q=${encodeURIComponent(query)}`;
+  if (airlineLower.includes('united')) {
+    return `https://www.united.com/en/us/fsr/choose-flights?f=${origin}&t=${dest}&d=${date}&tt=1&sc=${cabin === 'First' ? 'first' : 'economy'}&px=1`;
+  }
+  if (airlineLower.includes('southwest')) {
+    return `https://www.southwest.com/air/booking/select.html?originationAirportCode=${origin}&destinationAirportCode=${dest}&departureDate=${date}&tripType=oneway&adultPassengersCount=1`;
+  }
+  if (airlineLower.includes('jetblue')) {
+    return `https://www.jetblue.com/booking/flights?from=${origin}&to=${dest}&depart=${date}&isMultiCity=false&noOfRoute=1&adults=1&fareFamily=${cabin === 'First' ? 'mint' : 'blue'}`;
+  }
+  if (airlineLower.includes('frontier')) {
+    return `https://booking.flyfrontier.com/Flight/Select?o1=${origin}&d1=${dest}&dd1=${date}&ADT=1&mon=true`;
+  }
+  if (airlineLower.includes('spirit')) {
+    return `https://www.spirit.com/book/flights?origin=${origin}&destination=${dest}&departureDate=${date}&adults=1&tripType=one-way`;
+  }
+
+  // Fallback to Google Flights
+  return getGoogleFlightsUrl(origin, dest, date, airline, undefined, cabin);
 };
 
 // Generates a search link for PointsYeah (a great free award tool)
 export const getPointsSearchUrl = (_origin: string, _dest: string, _date: string): string => {
-  // Direct deep linking to results often requires auth tokens for these tools.
-  // We direct the user to the homepage of PointsYeah which is highly rated for this.
-  return `https://www.pointsyeah.com/`; 
+  return `https://www.pointsyeah.com/`;
 };
 
 export const origins = [AirportCode.DCA, AirportCode.IAD, AirportCode.BWI];

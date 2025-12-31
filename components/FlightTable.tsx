@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { FlightOffer, ValueStatus, PointsProgram } from '../types';
-import { getStatusColor, getGoogleFlightsUrl, getPointsSearchUrl } from '../utils/flightLogic';
+import { getStatusColor, getGoogleFlightsUrl, getKayakUrl, getSkyscannerUrl, getAirlineDirectUrl, getPointsSearchUrl } from '../utils/flightLogic';
 import { analyzeFlightRedemption } from '../utils/pointsCalculator';
 // Value analyzer utilities available for enhanced display
-import { AlertCircle, CheckCircle, ArrowRight, ArrowUp, ArrowDown, ArrowUpDown, Filter, Banknote, Coins, ExternalLink, Gift, MapPin, Armchair, Zap } from 'lucide-react';
+import { AlertCircle, CheckCircle, ArrowRight, ArrowUp, ArrowDown, ArrowUpDown, Filter, Banknote, Coins, ExternalLink, Gift, MapPin, Armchair, Zap, ChevronDown, Plane } from 'lucide-react';
 
 interface FlightTableProps {
   flights: FlightOffer[];
@@ -402,17 +402,61 @@ const FlightTable: React.FC<FlightTableProps> = ({ flights, isLoading, userProgr
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                       <div className="flex items-center gap-2">
-                        <a 
-                          href={googleFlightsUrl}
+                        {/* Primary Book Button - Airline Direct */}
+                        <a
+                          href={getAirlineDirectUrl(flight.origin, flight.destination, flight.date, flight.airline, flight.cabin)}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1 px-3 py-1.5 border border-slate-300 rounded-md text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 hover:text-blue-600 transition-colors"
-                          title={`Book ${flight.cabin} Class with Cash`}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 border border-blue-500 rounded-md text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors"
+                          title={`Book ${flight.cabin} on ${flight.airline} - ${flight.date}`}
                         >
+                          <Plane className="w-3 h-3" />
                           Book
-                          <ExternalLink className="w-3 h-3" />
                         </a>
-                        <a 
+
+                        {/* Booking Options Dropdown */}
+                        <div className="relative group">
+                          <button
+                            className="inline-flex items-center gap-1 px-2 py-1.5 border border-slate-300 rounded-md text-xs font-medium text-slate-600 bg-white hover:bg-slate-50 transition-colors"
+                            title="More booking options"
+                          >
+                            <ChevronDown className="w-3 h-3" />
+                          </button>
+                          <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-slate-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
+                            <div className="py-1">
+                              <a
+                                href={getKayakUrl(flight.origin, flight.destination, flight.date, flight.cabin)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                Kayak
+                              </a>
+                              <a
+                                href={getSkyscannerUrl(flight.origin, flight.destination, flight.date, flight.cabin)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                Skyscanner
+                              </a>
+                              <a
+                                href={googleFlightsUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                Google Flights
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Awards Button */}
+                        <a
                           href={pointsSearchUrl}
                           target="_blank"
                           rel="noreferrer"
