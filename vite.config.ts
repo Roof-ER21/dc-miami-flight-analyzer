@@ -9,6 +9,12 @@ export default defineConfig(({ mode }) => {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        allowedHosts: ['flyhome.up.railway.app'],
+      },
+      preview: {
+        port: Number(process.env.PORT) || 3000,
+        host: '0.0.0.0',
+        allowedHosts: ['flyhome.up.railway.app', '.railway.app'],
       },
       plugins: [react()],
       define: {
