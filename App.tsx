@@ -1,24 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { AirportCode, FlightOffer, ValueStatus } from './types';
+import { AirportCode, ValueStatus } from './types';
 import { origins as allOrigins, destinations as allDestinations } from './utils/flightLogic';
-import { fetchFlightDeals } from './services/mockFlightService';
 // Points calculator functions used by child components
 import { getFlightStats } from './utils/valueAnalyzer';
 import { useUserPreferences, useDarkMode } from './hooks/useUserPreferences';
+import { useFlightSearch } from './hooks/useFlightSearch';
 import FlightTable from './components/FlightTable';
 import StatsChart from './components/StatsChart';
 import TravelToolkit from './components/TravelToolkit';
 import SmartAlerts from './components/SmartAlerts';
 import SweetSpotFinder from './components/SweetSpotFinder';
 import SettingsPanel from './components/SettingsPanel';
-import { Plane, Download, RefreshCw, Filter, Zap, Wallet } from 'lucide-react';
+import { Plane, Download, RefreshCw, Filter, Zap, Wallet, Radio, Database } from 'lucide-react';
 
 const App: React.FC = () => {
   const [selectedOrigins, setSelectedOrigins] = useState<AirportCode[]>([...allOrigins]);
   const [selectedDestinations, setSelectedDestinations] = useState<AirportCode[]>([...allDestinations]);
-  const [flights, setFlights] = useState<FlightOffer[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  // Flight search hook (real API with mock fallback)
+  const { flights, isLoading, error, dataSource, searchFlights, hasRealApiKey } = useFlightSearch();
 
   // User preferences hook
   const { preferences, updatePreference, resetPreferences } = useUserPreferences();
@@ -28,16 +29,8 @@ const App: React.FC = () => {
   const stats = flights.length > 0 ? getFlightStats(flights, preferences.pointsProgram) : null;
 
   const loadData = async () => {
-    setIsLoading(true);
-    try {
-      const results = await fetchFlightDeals(selectedOrigins, selectedDestinations);
-      setFlights(results);
-      setLastUpdated(new Date());
-    } catch (error) {
-      console.error("Failed to fetch flights", error);
-    } finally {
-      setIsLoading(false);
-    }
+    await searchFlights(selectedOrigins, selectedDestinations);
+    setLastUpdated(new Date());
   };
 
   useEffect(() => {
@@ -103,9 +96,25 @@ const App: React.FC = () => {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-slate-900">DC-Miami Flight Analyzer</h1>
-                <p className="text-xs text-slate-500">
-                  Amex Value Tracker • {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : 'Ready to scan'}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs text-slate-500">
+                    Amex Value Tracker • {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : 'Ready to scan'}
+                  </p>
+                  {/* Data Source Indicator */}
+                  {dataSource !== 'none' && (
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full ${
+                      dataSource === 'api'
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : 'bg-amber-100 text-amber-700'
+                    }`}>
+                      {dataSource === 'api' ? (
+                        <><Radio className="w-3 h-3" /> Live</>
+                      ) : (
+                        <><Database className="w-3 h-3" /> Sample</>
+                      )}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -145,7 +154,22 @@ const App: React.FC = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-        
+
+        {/* API Status Banner */}
+        {error && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
+            <Database className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-amber-800">{error}</p>
+              <p className="text-xs text-amber-600 mt-1">
+                {hasRealApiKey
+                  ? 'The app will continue with sample data for demonstration.'
+                  : 'Add VITE_SERPAPI_KEY to .env.local to enable real flight data from Google Flights.'}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Smart Alerts Section - Replaces Generic KPIs as primary focus */}
         <SmartAlerts flights={flights} />
 
