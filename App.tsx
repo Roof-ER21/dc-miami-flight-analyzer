@@ -3,14 +3,17 @@ import { AirportCode, ValueStatus } from './types';
 import { origins as allOrigins, destinations as allDestinations } from './utils/flightLogic';
 // Points calculator functions used by child components
 import { getFlightStats } from './utils/valueAnalyzer';
+import { checkPricesAgainstWatched } from './utils/priceChecker';
 import { useUserPreferences, useDarkMode } from './hooks/useUserPreferences';
 import { useFlightSearch } from './hooks/useFlightSearch';
+import { usePriceAlerts } from './hooks/usePriceAlerts';
 import FlightTable from './components/FlightTable';
 import StatsChart from './components/StatsChart';
 import TravelToolkit from './components/TravelToolkit';
 import SmartAlerts from './components/SmartAlerts';
 import SweetSpotFinder from './components/SweetSpotFinder';
 import SettingsPanel from './components/SettingsPanel';
+import PriceAlerts from './components/PriceAlerts';
 import { Plane, Download, RefreshCw, Filter, Zap, Wallet, Radio, Database } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -25,6 +28,22 @@ const App: React.FC = () => {
   const { preferences, updatePreference, resetPreferences } = useUserPreferences();
   useDarkMode(preferences.darkMode);
 
+  // Price alerts hook
+  const {
+    watchedRoutes,
+    alerts,
+    unreadAlertCount,
+    notificationPermission,
+    addWatch,
+    removeWatch,
+    addAlert,
+    dismissAlert,
+    clearAllAlerts,
+    requestNotificationPermission,
+    sendNotification,
+    updateRoutePrice,
+  } = usePriceAlerts();
+
   // Get enhanced stats
   const stats = flights.length > 0 ? getFlightStats(flights, preferences.pointsProgram) : null;
 
@@ -37,6 +56,32 @@ const App: React.FC = () => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Initial load
+
+  // Check prices against watched routes whenever flights update
+  useEffect(() => {
+    if (flights.length === 0 || watchedRoutes.length === 0) return;
+
+    const { newAlerts, updatedRoutes } = checkPricesAgainstWatched(flights, watchedRoutes);
+
+    // Update route prices
+    updatedRoutes.forEach(({ routeId, price }) => {
+      updateRoutePrice(routeId, price);
+    });
+
+    // Add new alerts and send notifications
+    newAlerts.forEach((alertData) => {
+      addAlert(alertData);
+
+      // Send browser notification
+      if (notificationPermission === 'granted') {
+        sendNotification(
+          `Price Drop Alert!`,
+          `${alertData.origin} → ${alertData.destination}: $${alertData.currentPrice} (Save $${alertData.savedAmount})`,
+          `https://www.google.com/travel/flights?q=${alertData.origin}%20to%20${alertData.destination}`
+        );
+      }
+    });
+  }, [flights, watchedRoutes, updateRoutePrice, addAlert, notificationPermission, sendNotification]);
 
   const toggleOrigin = (code: AirportCode) => {
     setSelectedOrigins(prev => 
@@ -127,6 +172,17 @@ const App: React.FC = () => {
                   </span>
                 </div>
               )}
+              <PriceAlerts
+                watchedRoutes={watchedRoutes}
+                alerts={alerts}
+                unreadAlertCount={unreadAlertCount}
+                notificationPermission={notificationPermission}
+                onAddWatch={addWatch}
+                onRemoveWatch={removeWatch}
+                onDismissAlert={dismissAlert}
+                onClearAlerts={clearAllAlerts}
+                onRequestPermission={requestNotificationPermission}
+              />
               <SettingsPanel
                 preferences={preferences}
                 onUpdate={updatePreference}
