@@ -1,0 +1,5 @@
+{
+  "name": "DC-Miami Flight Analyzer",
+  "description": "A flight price tracking dashboard optimized for analyzing cash vs. points value for frequent travel between DC (DCA, IAD, BWI) and Miami (MIA, FLL).",
+  "requestFramePermissions": []
+}
