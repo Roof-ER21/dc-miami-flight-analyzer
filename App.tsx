@@ -21,8 +21,8 @@ const App: React.FC = () => {
   const [selectedDestinations, setSelectedDestinations] = useState<AirportCode[]>([...allDestinations]);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  // Flight search hook (real API with mock fallback)
-  const { flights, isLoading, error, dataSource, searchFlights, hasRealApiKey } = useFlightSearch();
+  // Flight search hook (real API with mock fallback + caching)
+  const { flights, isLoading, error, dataSource, searchFlights, hasRealApiKey, cacheAge, clearCache } = useFlightSearch();
 
   // User preferences hook
   const { preferences, updatePreference, resetPreferences } = useUserPreferences();
@@ -47,8 +47,11 @@ const App: React.FC = () => {
   // Get enhanced stats
   const stats = flights.length > 0 ? getFlightStats(flights, preferences.pointsProgram) : null;
 
-  const loadData = async () => {
-    await searchFlights(selectedOrigins, selectedDestinations);
+  const loadData = async (forceRefresh: boolean = false) => {
+    if (forceRefresh) {
+      clearCache();
+    }
+    await searchFlights(selectedOrigins, selectedDestinations, forceRefresh);
     setLastUpdated(new Date());
   };
 
@@ -150,10 +153,14 @@ const App: React.FC = () => {
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full ${
                       dataSource === 'api'
                         ? 'bg-emerald-100 text-emerald-700'
+                        : dataSource === 'cache'
+                        ? 'bg-blue-100 text-blue-700'
                         : 'bg-amber-100 text-amber-700'
                     }`}>
                       {dataSource === 'api' ? (
                         <><Radio className="w-3 h-3" /> Live</>
+                      ) : dataSource === 'cache' ? (
+                        <><Database className="w-3 h-3" /> Cached {cacheAge && `(${cacheAge})`}</>
                       ) : (
                         <><Database className="w-3 h-3" /> Sample</>
                       )}
@@ -188,14 +195,25 @@ const App: React.FC = () => {
                 onUpdate={updatePreference}
                 onReset={resetPreferences}
               />
-              <button
-                onClick={loadData}
-                disabled={isLoading}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors disabled:opacity-50"
-              >
-                <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-                Scan Flights
-              </button>
+              <div className="flex items-center">
+                <button
+                  onClick={() => loadData(false)}
+                  disabled={isLoading}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-l-lg border-r border-blue-200 transition-colors disabled:opacity-50"
+                  title="Use cached data if available (saves API calls)"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  Scan Flights
+                </button>
+                <button
+                  onClick={() => loadData(true)}
+                  disabled={isLoading}
+                  className="flex items-center gap-1 px-2 py-2 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-r-lg transition-colors disabled:opacity-50"
+                  title="Force refresh - fetch new data from API"
+                >
+                  <Zap className="w-3 h-3" />
+                </button>
+              </div>
               <button
                 onClick={exportCSV}
                 disabled={flights.length === 0}
